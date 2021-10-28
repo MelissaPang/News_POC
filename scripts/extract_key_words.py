@@ -120,9 +120,9 @@ def process_by_num_words(corpus, stop_words, num_words, topn, threshold):
 
 
 # root directory
-root_directory = '/Users/melissapanggwugmail.com/Desktop/CIA_POC/Key_words_extraction'
+root_directory = '/Users/melissapanggwugmail.com/Desktop/CIA_POC/News_POC'
 # read in raw article data
-input_file = 'raw_data.csv'
+input_file = 'input/raw_data.csv'
 df = pd.read_csv(os.path.join(root_directory, input_file))
 # Some exploration on the most frequent words, not neccessary in the pipeline
 # Fetch wordcount for each abstract
@@ -193,5 +193,5 @@ final_df = final_df.merge(key_bi_gram, left_on='ID', right_on='ID', how='left')
 final_df = final_df.merge(key_tri_gram, left_on='ID', right_on='ID', how='left')
 
 # output
-output_filename = 'processed_input_data'
+output_filename = 'output/processed_input_data'
 final_df.to_csv(os.path.join(root_directory, output_filename), index=False)

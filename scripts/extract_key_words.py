@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import glob
 import nltk
 nltk.download()
 from nltk.stem.porter import PorterStemmer
@@ -15,6 +16,11 @@ import sklearn
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 import seaborn as sns
+
+
+def remove_string(att, remove_str):
+    att = att.apply(lambda x: str(x).replace(remove_str, ''))
+    return att
 
 
 # Most frequently occuring words
@@ -83,10 +89,10 @@ def process_by_num_words(corpus, stop_words, num_words, topn, threshold):
 
     # extract key words
     id = []
-    nn_keywords_keys = []
-    nn_keywords_values = []
-    vb_keywords_keys = []
-    vb_keywords_values = []
+    nn_keywords_keys_list = []
+    nn_keywords_values_list = []
+    vb_keywords_keys_list = []
+    vb_keywords_values_list = []
     for idx in range(len(corpus)):
         # fetch document for which keywords needs to be extracted
         id.append(df['stories_id'][idx])
@@ -108,22 +114,44 @@ def process_by_num_words(corpus, stop_words, num_words, topn, threshold):
         vb_keywords_keys = list(vb_keywords.keys())
         vb_keywords_values = list(vb_keywords.values())
 
-        nn_keywords_keys.append(nn_keywords_keys)
-        nn_keywords_values.append(nn_keywords_values)
-        vb_keywords_keys.append(vb_keywords_keys)
-        vb_keywords_values.append(vb_keywords_values)
+        nn_keywords_keys_list.append(nn_keywords_keys)
+        nn_keywords_values_list.append(nn_keywords_values)
+        vb_keywords_keys_list.append(vb_keywords_keys)
+        vb_keywords_values_list.append(vb_keywords_values)
 
     keyword_results = pd.DataFrame(
-        list(zip(id, nn_keywords_keys, nn_keywords_values, vb_keywords_keys, vb_keywords_values)),
+        list(zip(id, nn_keywords_keys_list, nn_keywords_values_list, vb_keywords_keys_list, vb_keywords_values_list)),
         columns=['stories_id', 'NN_keywords', 'NN_scores', 'VB_keywords', 'VB_scores'])
     return keyword_results
 
 
 # root directory
 root_directory = '/Users/melissapanggwugmail.com/Desktop/CIA_POC/News_POC'
+
+# Append all batches of input data
+os.chdir(os.path.join(root_directory, 'input'))
+extension = 'csv'
+all_inputfilenames = [i for i in glob.glob('sample'+'*.{}'.format(extension))]
+#combine all files in the list
+combined_csv = pd.concat([pd.read_csv(f) for f in all_inputfilenames ])
+#export to csv
+combined_csv.to_csv("all_sample_articles.csv", index=False, encoding='utf-8-sig')
+
 # read in raw article data
-input_file = 'input/sample_articles.csv'
+input_file = 'input/all_sample_articles.csv'
+output_filename = 'output/processed_all_sample_articles'
+
 df = pd.read_csv(os.path.join(root_directory, input_file))
+
+# Cleaning the 'text' column
+df['text'] = remove_string(df['text'], 'Watch CBSN Live Copyright © 2021 CBS Interactive Inc. All rights reserved.')
+df['text'] = remove_string(df['text'], 'Quotes delayed at least 15 minutes.')
+df['text'] = remove_string(df['text'],
+                           'Thank you for your patience. Our engineers are working quickly to resolve the issue.')
+df['text'] = remove_string(df['text'],
+                           'Fox News Flash top headlines are here. Check out what\'s clicking on Foxnews.com.')
+df['text'] = remove_string(df['text'], 'Advertisement Supported by ')
+
 # Some exploration on the most frequent words, not neccessary in the pipeline
 # Fetch wordcount for each abstract
 df['word_count'] = df['text'].apply(lambda x: len(str(x).split(" ")))
@@ -142,7 +170,7 @@ stop_words = stop_words.union(new_words)
 corpus = []
 for i in range(0, df.shape[0]):
     # Remove punctuations
-    if str(df['text'][i]) != 'nan':
+    if str(df['text'][i]) != 'nan' and str(df['text'][i]) != '':
         text = re.sub('[^a-zA-Z]', ' ', df['text'][i])
         # Convert to lowercase
         text = text.lower()
@@ -194,5 +222,4 @@ final_df = final_df.merge(key_bi_gram, left_on='stories_id', right_on='stories_i
 final_df = final_df.merge(key_tri_gram, left_on='stories_id', right_on='stories_id', how='left')
 
 # output
-output_filename = 'output/processed_input_data2'
 final_df.to_csv(os.path.join(root_directory, output_filename), index=False)

@@ -89,7 +89,7 @@ def process_by_num_words(corpus, stop_words, num_words, topn, threshold):
     vb_keywords_values = []
     for idx in range(len(corpus)):
         # fetch document for which keywords needs to be extracted
-        id.append(df['ID'][idx])
+        id.append(df['stories_id'][idx])
         doc = corpus[idx]
         # generate tf-idf for the given document
         tf_idf_vector = tfidf_transformer.transform(cv.transform([doc]))
@@ -115,18 +115,18 @@ def process_by_num_words(corpus, stop_words, num_words, topn, threshold):
 
     keyword_results = pd.DataFrame(
         list(zip(id, nn_keywords_keys, nn_keywords_values, vb_keywords_keys, vb_keywords_values)),
-        columns=['ID', 'NN_keywords', 'NN_scores', 'VB_keywords', 'VB_scores'])
+        columns=['stories_id', 'NN_keywords', 'NN_scores', 'VB_keywords', 'VB_scores'])
     return keyword_results
 
 
 # root directory
 root_directory = '/Users/melissapanggwugmail.com/Desktop/CIA_POC/News_POC'
 # read in raw article data
-input_file = 'input/raw_data.csv'
+input_file = 'input/sample_articles.csv'
 df = pd.read_csv(os.path.join(root_directory, input_file))
 # Some exploration on the most frequent words, not neccessary in the pipeline
 # Fetch wordcount for each abstract
-df['word_count'] = df['Article'].apply(lambda x: len(str(x).split(" ")))
+df['word_count'] = df['text'].apply(lambda x: len(str(x).split(" ")))
 # Descriptive statistics of word counts
 df.word_count.describe()
 # Identify common words
@@ -142,22 +142,23 @@ stop_words = stop_words.union(new_words)
 corpus = []
 for i in range(0, df.shape[0]):
     # Remove punctuations
-    text = re.sub('[^a-zA-Z]', ' ', df['Article'][i])
-    # Convert to lowercase
-    text = text.lower()
-    # remove tags
-    text = re.sub("&lt;/?.*?&gt;", " &lt;&gt; ", text)
-    # remove special characters and digits
-    # shall we keep the digits?
-    text = re.sub("(\\d|\\W)+", " ", text)
-    # Convert to list from string
-    text = text.split()
-    # Stemming
-    # ps = PorterStemmer()
-    # Lemmatisation
-    lem = WordNetLemmatizer()
-    text = [lem.lemmatize(word) for word in text if not word in stop_words]
-    text = " ".join(text)
+    if str(df['text'][i]) != 'nan':
+        text = re.sub('[^a-zA-Z]', ' ', df['text'][i])
+        # Convert to lowercase
+        text = text.lower()
+        # remove tags
+        text = re.sub("&lt;/?.*?&gt;", " &lt;&gt; ", text)
+        # remove special characters and digits
+        # shall we keep the digits?
+        text = re.sub("(\\d|\\W)+", " ", text)
+        # Convert to list from string
+        text = text.split()
+        # Stemming
+        # ps = PorterStemmer()
+        # Lemmatisation
+        lem = WordNetLemmatizer()
+        text = [lem.lemmatize(word) for word in text if not word in stop_words]
+        text = " ".join(text)
     corpus.append(text)
 
 # exploration: plot the most frequent n words
@@ -188,10 +189,10 @@ key_tri_gram = key_tri_gram.rename(
      "VB_keywords": "VB_keywords_tri_gram",
      "VB_scores": "VB_scores_tri_gram"}, axis=1
 )
-final_df = df.merge(key_single_word, left_on='ID', right_on='ID', how='left')
-final_df = final_df.merge(key_bi_gram, left_on='ID', right_on='ID', how='left')
-final_df = final_df.merge(key_tri_gram, left_on='ID', right_on='ID', how='left')
+final_df = df.merge(key_single_word, left_on='stories_id', right_on='stories_id', how='left')
+final_df = final_df.merge(key_bi_gram, left_on='stories_id', right_on='stories_id', how='left')
+final_df = final_df.merge(key_tri_gram, left_on='stories_id', right_on='stories_id', how='left')
 
 # output
-output_filename = 'output/processed_input_data'
+output_filename = 'output/processed_input_data2'
 final_df.to_csv(os.path.join(root_directory, output_filename), index=False)
